@@ -10,9 +10,11 @@ import traceback
 import urllib3
 import xmltodict
 
-import numpy as np
+import pandas as pd
+# import numpy as np
 
-from astropy.time import Time
+from datetime import datetime
+# from astropy.time import Time
 
 months = {'Jan':'01','Feb':'02','Mar':'03',
           'Apr':'04','May':'05','Jun':'06',
@@ -94,8 +96,8 @@ def get_start_end(tv):
         end[0] = end[2]
         end[2] = end[1]
         end[1] = month
-        start = Time('-'.join(start[:-1]).replace(',','')+'T'+start[-1])
-        end = Time('-'.join(end[:-1]).replace(',','')+'T'+end[-1])
+        start = datetime.fromisoformat('-'.join(start[:-1]).replace(',','')+'T'+start[-1])
+        end = datetime.fromisoformat('-'.join(end[:-1]).replace(',','')+'T'+end[-1])
     else:
         try:
             tv['planWindow'] = tv['planWindow'].replace(',','')
@@ -112,15 +114,15 @@ def get_start_end(tv):
         end[0] = end[-1]
         end[-1] = start[1]
         end[1] = month
-        start = Time('-'.join(start)+'T00:00:00')
-        end = Time('-'.join(end))
+        start = datetime.fromisoformat('-'.join(start)+'T00:00:00')
+        end = datetime.fromisoformat('-'.join(end))
     return start, end  # returns an mjd for simplicity
 
 def logging(log_name, message):
     
         f = open(log_name,'a')
         
-        logtime = str(Time.now())
+        logtime = datetime.now().isoformat()
 
         f.write(logtime + ': ' + message + '\n')
 
@@ -138,7 +140,7 @@ def get_dates(pid, obs_id, log_name):
         obs_meta = program_info(pid)
     except:
         logging(log, 'Could not get program info for {}.'.format(pid))
-        start, end = np.nan, np.nan
+        start, end = pd.NA, pd.NA
         pass
 
 
@@ -170,7 +172,7 @@ def get_dates(pid, obs_id, log_name):
                     start, end = get_start_end(visit)
                 except:
                     logging(log, 'Could not get start and end times.')
-                    start, end = np.nan, np.nan
+                    start, end = pd.NA, pd.NA
 
                 starts.append(start.value)
                 ends.append(end.value)
