@@ -109,6 +109,30 @@ def prog2df(info, miri_only=True):
     return df
 
 
+def parse_repeats(repeat_dict):
+    """
+    Parse the OrderedDict entries of the repeatOf and repeatedBy fields.
+    These are used in the Scheduled and Skipped tables
+
+    Parameters
+    ----------
+    repeat_dict : OrderedDict
+      This contains the information about the observation that was/will be repeated
+      
+
+    Output
+    ------
+    repeat_str: str
+      the repeat observation information in a nicely formatted string
+
+    """
+    if isinstance(repeat_dict, dict):
+        repeat_str = ' / '.join(f"{k}: {v}" for k, v in repeat_dict.items())
+    else:
+        repeat_str = str(repeat_dict)
+    return repeat_str
+
+
 def get_program_table(list_of_programs, verbose=True):
     """Given a list of program IDs, get their visit status information"""
     programs = {}
@@ -125,7 +149,12 @@ def get_program_table(list_of_programs, verbose=True):
     # combine the programs and drop the dummy indices
     programs = pd.concat(programs, names=["pid"]).reset_index()
     programs.drop(columns=["obs_index", "obs_window"], inplace=True)
+    # clean up weird columns
+    for repeat_col in ['repeatOf', 'repeatedBy']:
+        if repeat_col in programs.columns:
+            programs[repeat_col] = programs[repeat_col].apply(parse_repeats)
     return programs
+
 
 
 ### HTML GENERATION ###
