@@ -1,6 +1,5 @@
 """Generate an html page that contains all the visit information"""
-# use conda environment ??
-
+# use conda environment coron_program_tracker
 import sys
 import re
 from pathlib import Path
@@ -10,8 +9,8 @@ from datetime import datetime, date
 # from requests.sessions import get_environ_proxies
 import pandas as pd
 from lib import observing_windows as ow
+from lib import html
 
-template_path = Path(__file__).parent / "html_templates"
 
 
 def parse_plan_windows(window, dates=[]):
@@ -103,6 +102,8 @@ def prog2df(info, miri_only=True):
         )
         # split the planWindow column into something sortable
         df = add_plan_windows_to_program_df(df)
+        # add the miri reviewer to the dataframe
+        df['Instr. Sci.'] = info['miri_is']
     except ValueError:
         print(f"{info['proposal_id']} failed, no information available")
         df = pd.DataFrame()
@@ -143,7 +144,7 @@ def get_program_table(list_of_programs, verbose=True):
         if df.empty == True:
             pass
         else:
-            programs[info["proposal_id"]] = prog2df(info)
+            programs[info["proposal_id"]] = df#prog2df(info)
         if verbose:
             print(str(pid) + " finished")
     # combine the programs and drop the dummy indices
@@ -155,93 +156,6 @@ def get_program_table(list_of_programs, verbose=True):
             programs[repeat_col] = programs[repeat_col].apply(parse_repeats)
     return programs
 
-
-
-### HTML GENERATION ###
-
-
-# top of the HTML file
-def head_template():
-    with open(template_path / "head_template.txt", "r") as ff:
-        template = ff.read()
-    return template
-
-
-# start the body, up to the table
-def body_start_template():
-    with open(template_path / "body_start_template.txt", "r") as ff:
-        template = ff.read()
-    today = str(date.today())
-    return template.replace("{insert_date_here}", today)
-
-
-# bottom of the HTML file
-def body_end_template(table_keys=[]):
-    with open(template_path / "body_end_template.txt", "r") as ff:
-        template = ff.read()
-
-    # if there's more than one table to sort, pass the keys
-    if table_keys == []:
-        pass
-    else:
-        sort_lines = "\n".join(f"$('#{k}').DataTable();" for k in table_keys)
-        template = template.replace("$('#table').DataTable();", sort_lines)
-    return template
-
-
-# start the body, up to the table
-def table_start_template(columns, table_name="table"):
-    with open(template_path / "table_start_template.txt", "r") as ff:
-        template = ff.read()
-    template = template.replace('id="{replace_with_table_name}"', f'id="{table_name}"')
-    column_props = 'class="align-middle"'
-    column_text = "\n".join(f"<th {column_props}>{c}</th>" for c in columns)
-    return template.replace("{replace_text_here_with_columns}", column_text)
-
-
-# bottom of the HTML file
-def table_end_template():
-    with open(template_path / "table_end_template.txt", "r") as ff:
-        template = ff.read()
-    return template
-
-
-def generate_table_rows(database):
-    def df2html_row(row):
-        text = "\n".join(f'<td class="align-middle">{i}</td>' for i in row)
-        text = "<tr>" + text + "</tr>"
-        return text
-
-    row_data = ""
-    for i, row in database.iterrows():
-        row_data = row_data + "\n" + df2html_row(row)
-    return row_data
-
-
-def write_html(outfile, database):
-    """write the visit info to html"""
-    with open(outfile, "w") as ff:
-        ff.write(head_template())
-
-        ff.write(body_start_template())
-
-        tables_gb = database.groupby("status")
-        table_keys = sorted(tables_gb.groups.keys())
-        print("Generating the following tables:")
-        print("\t", ", ".join(table_keys))
-        # make a separate table for each kind of visit status
-        list_of_tables = []
-        for key, group in tables_gb:
-            group_dropna = group.dropna(how="all", axis=1)
-            ff.write(f"<br><br>Status: {key.title()}<br>\n")
-            table_name = f"table_{key}"
-            ff.write(table_start_template(group_dropna.columns, table_name))
-            list_of_tables.append(table_name)
-            row_data = generate_table_rows(group_dropna)
-            ff.write(row_data)
-            ff.write(table_end_template())
-
-        ff.write(body_end_template(list_of_tables))
 
 
 def print_columns(items, ncols=4):
@@ -295,12 +209,57 @@ def get_next_month(program_table, time_window=60):
         start_date = date(start_time.tm_year, start_time.tm_mon, start_time.tm_mday)
         dtime = (start_date - today).days
         in_window = True if dtime <= time_window else False
+        if dtime < 0 :
+            in_window = False
         return in_window
 
     program_table["in_next_month"] = program_table["planWindow-begin_dec"].apply(
         get_time_delta, time_window
     )
     return program_table.query("in_next_month == True").copy()
+
+
+def generate_email_template(
+        programs : pd.DataFrame
+) -> str :
+    """
+    Generate the email template and write it to disk
+
+    Parameters
+    ----------
+    programs : pd.DataFrame
+      dataframe with the program information
+
+    Output
+    ------
+    writes email template to "email_template.txt"
+
+    """
+    today = datetime.today().strftime("%Y-%m-%d")
+    text = ""
+    text += f"Subject line: MIRI Coronagraphy - Upcoming Programs {today}" + "\n"
+    text += "\n\n"
+    text += "Dear MIRI Coronagraphy Working Group,\n\n"
+    text += f"The schedule of MIRI coronagraphic observations has been updated and is available here: https://innerspace.stsci.edu/display/JWST/MIRI+Coronagraphy+Scheduling+Table" + "\n"
+
+    time_window = 60
+    text += f"The following observations are planned to execute within the next {time_window} days:" + "\n\n"
+    
+    next_programs = get_next_month(programs, time_window)
+    next_programs["observation"] = next_programs["observation"].apply(int)
+    next_programs.sort_values(by=["planWindow-begin_dec", "observation"], inplace=True)
+
+    for key, group in next_programs.groupby("status"):
+        text += "Status: " + key + "\n"
+        text += "-" * len("Status: " + key) + "\n"
+        lines = group.apply(
+            lambda row: f"Prog {row['pid']} | Obs {int(row['observation']):3d} | Start: {row['planWindow-begin_cal']} | {row['Instr. Sci.']}",
+            axis=1,
+        )
+        text += "\n".join(lines) + "\n\n"
+    text += "\n" + "Regards," + "\n\n" + "The MIRI Coronagraphy Working Group"
+    return text
+
 
 
 if __name__ == "__main__":
@@ -322,7 +281,7 @@ if __name__ == "__main__":
         html_path = Path(ofile)
     except:
         html_path = Path("/Users/jaguilar/Desktop/test.html")
-    write_html(str(html_path), programs)
+    html.write_html(str(html_path), programs)
     print(
         f"""Upload it to the "MIRI Coronagraphy Dump" folder:
     \t https://stsci.app.box.com/folder/196944163759
@@ -332,30 +291,8 @@ if __name__ == "__main__":
     )
 
     # print the programs that are happening in the next month
-    print("Copy and paste this section into your program status email:\n")
-    today = datetime.today().strftime("%Y-%m-%d")
-    print(f"Subject line: MIRI Coronagraphy - Upcoming Programs {today}")
-    print("\n\n")
-
-    print(
-        f"The schedule of MIRI coronagraphic observations has been updated and is available here: https://innerspace.stsci.edu/display/JWST/MIRI+Coronagraphy+Scheduling+Table"
-    )
-
-    time_window = 60
-    print(
-        f"The following observations are planned to execute within the next {time_window} days:\n"
-    )
-    next_programs = get_next_month(programs, time_window)
-    next_programs["observation"] = next_programs["observation"].apply(int)
-    next_programs.sort_values(by=["planWindow-begin_dec", "observation"], inplace=True)
-
-    for key, group in next_programs.groupby("status"):
-        print("Status: " + key)
-        print("-" * len("Status: " + key))
-        group.apply(
-            lambda row: print(
-                f"Prog {row['pid']} | Obs {row['observation']:3d} | Start: {row['planWindow-begin_cal']}"
-            ),
-            axis=1,
-        )
-        print("\n")
+    print("Copy and paste this text (email_text.txt) into your program status email:\n")
+    email_text = generate_email_template(programs)
+    print(email_text)
+    with open("email_text.txt", "w") as f:
+        f.write(email_text)

@@ -4,11 +4,13 @@ Script courtesy of Mike Engesser
 #!/usr/bin/env python3
 
 import os,sys
+import re
 import subprocess
 import requests
 import traceback
 import urllib3
 import xmltodict
+from bs4 import BeautifulSoup
 
 import pandas as pd
 # import numpy as np
@@ -33,7 +35,7 @@ def getxml(url="https://yoursite/your.xml"):
         
     return data
 
-def visit_xml(proposal_id=1324):
+def visit_xml(proposal_id=1234):
     url = f"https://www.stsci.edu/cgi-bin/get-visit-status?id={proposal_id}&markupFormat=xml&observatory=JWST"
     data = getxml(url=url)
     if 'visitStatusReport' in data:
@@ -41,35 +43,60 @@ def visit_xml(proposal_id=1324):
         
     return data
 
-def prop_html(proposal_id=1324):
-    from bs4 import BeautifulSoup
+def prop_html(proposal_id=1234):
+    proposal_id = int(proposal_id)
     vgm_url = f"https://www.stsci.edu/cgi-bin/get-proposal-info?id={proposal_id}&observatory=JWST"
     html_text = requests.get(vgm_url).text
     soup = BeautifulSoup(html_text, 'html.parser')
     return soup
 
-def program_info(proposal_id=1324):
+def program_info(proposal_id=1234):
     
     soup = prop_html(proposal_id=proposal_id)
     meta = {'proposal_id':proposal_id}
-    meta['raw'] = soup
+    meta['raw'] = str(soup)
     
-    ps = soup.findAll('p')
-    try:
-        meta['pi'] = ps[0].contents[1].strip()
-        meta['title'] = ps[1].contents[1].strip()
-        meta['cycle'] = int(ps[1].contents[5].strip())
-        meta['allocation'] = float(ps[1].contents[9].strip().split()[0])
-        meta['proptime'] = float(ps[1].contents[-1].strip().split()[0])
-        meta['type'] = soup.findAll('h1')[0].contents[1].contents[0]
-    except IndexError:
-        print(f"Error with HTML for proposal {proposal_id}")
-        meta['pi'] = '-'
-        meta['title'] = '-'
-        meta['cycle'] = 0
-        meta['allocation'] = 0
-        meta['proptime'] = 0.
-        meta['type'] = '-'
+    keys = [
+        ('Principal Investigator', 'pi'),
+        ('PI Institution', 'inst'),
+        ('Title', 'title'),
+        ('Cycle', 'cycle'),
+        ('Allocation', 'allocation'),
+        ('Program Status', 'type'),
+        ('MIRI Reviewer', 'miri_is'),
+    ]
+    for k in keys:
+        pattern = re.compile(f"(?<=<b>{k[0]}:</b>)(.*?)(?=<a|<br/>)")
+        match = re.search(pattern, str(soup))
+        if match is not None:
+            match_val = match.group().strip()
+            meta[k[1]] = match_val
+        else:
+            meta[k[1]] = '_'
+    # ps = soup.findAll('p')
+    # try:
+    #     meta['pi'] = ps[0].contents[1].strip()
+    #     meta['title'] = ps[1].contents[1].strip()
+    #     meta['cycle'] = int(ps[1].contents[5].strip())
+    #     meta['allocation'] = float(ps[1].contents[9].strip().split()[0])
+    #     meta['proptime'] = float(ps[1].contents[-1].strip().split()[0])
+    #     meta['type'] = soup.findAll('h1')[0].contents[1].contents[0]
+    #     # get the MIRI instrument scientist
+    #     match = "(?<=MIRI Reviewer:</b> )[a-zA-Z0-9\s]*(?=<a)"
+    #     miri_is = re.search(match, str(soup))
+    #     try:
+    #         meta['miri_is'] = miri_is.group().strip()
+    #     except AttributeError:
+    #         meta['miri_is'] = 'not found'
+    # except IndexError:
+    #     print(f"Error parsing HTML for proposal {proposal_id}")
+    #     meta['pi'] = '-'
+    #     meta['title'] = '-'
+    #     meta['cycle'] = 0
+    #     meta['allocation'] = 0
+    #     meta['proptime'] = 0.
+    #     meta['type'] = '-'
+    #     meta['miri_is'] = '_'
         
     visits = visit_xml(proposal_id)
     #for k in ['visit']: #visits:
