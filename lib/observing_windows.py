@@ -73,30 +73,6 @@ def program_info(proposal_id=1234):
             meta[k[1]] = match_val
         else:
             meta[k[1]] = '_'
-    # ps = soup.findAll('p')
-    # try:
-    #     meta['pi'] = ps[0].contents[1].strip()
-    #     meta['title'] = ps[1].contents[1].strip()
-    #     meta['cycle'] = int(ps[1].contents[5].strip())
-    #     meta['allocation'] = float(ps[1].contents[9].strip().split()[0])
-    #     meta['proptime'] = float(ps[1].contents[-1].strip().split()[0])
-    #     meta['type'] = soup.findAll('h1')[0].contents[1].contents[0]
-    #     # get the MIRI instrument scientist
-    #     match = "(?<=MIRI Reviewer:</b> )[a-zA-Z0-9\s]*(?=<a)"
-    #     miri_is = re.search(match, str(soup))
-    #     try:
-    #         meta['miri_is'] = miri_is.group().strip()
-    #     except AttributeError:
-    #         meta['miri_is'] = 'not found'
-    # except IndexError:
-    #     print(f"Error parsing HTML for proposal {proposal_id}")
-    #     meta['pi'] = '-'
-    #     meta['title'] = '-'
-    #     meta['cycle'] = 0
-    #     meta['allocation'] = 0
-    #     meta['proptime'] = 0.
-    #     meta['type'] = '-'
-    #     meta['miri_is'] = '_'
         
     visits = visit_xml(proposal_id)
     #for k in ['visit']: #visits:
