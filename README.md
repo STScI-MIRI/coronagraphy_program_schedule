@@ -9,3 +9,10 @@ The observations are sorted by planning status, and all columns are sortable.
 2. Run program_tracker.py from the command line
 3. Upload miri_coron_schedule.html, the output file, to https://stsci.app.box.com/file/1153457899380
 4. Copy and paste the HTML into the HTML box at https://innerspace.stsci.edu/display/JWST/MIRI+Coronagraphy+Scheduling+Table
+
+Requirements:
+- pandas
+- requests
+- urllib3
+- beautifulsoup4
+- xmltodict

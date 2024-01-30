@@ -3,9 +3,7 @@ Script courtesy of Mike Engesser
 """
 #!/usr/bin/env python3
 
-import os,sys
 import re
-import subprocess
 import requests
 import traceback
 import urllib3

@@ -1,7 +1,7 @@
 ### HTML GENERATION ###
 
 from pathlib import Path
-from datetime import datetime, date
+from datetime import date
 
 template_path = Path(__file__).parent / "html_templates"
 
