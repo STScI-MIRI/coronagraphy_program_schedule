@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 import time
 from datetime import datetime, date
-
+import inspect
 # from requests.sessions import get_environ_proxies
 import pandas as pd
 from lib import observing_windows as ow
@@ -213,8 +213,8 @@ def get_next_month(program_table, time_window=60):
             in_window = False
         return in_window
 
-    program_table["in_next_month"] = program_table["planWindow-begin_dec"].apply(
-        get_time_delta, time_window
+    program_table["in_next_month"] = program_table["planWindow-begin_dec"].astype(float).apply(
+        get_time_delta, args=[time_window]
     )
     return program_table.query("in_next_month == True").copy()
 
@@ -240,7 +240,7 @@ def generate_email_template(
     text += f"Subject line: MIRI Coronagraphy - Upcoming Programs {today}" + "\n"
     text += "\n\n"
     text += "Dear MIRI Coronagraphy Working Group,\n\n"
-    text += f"The schedule of MIRI coronagraphic observations has been updated and is available here: https://innerspace.stsci.edu/display/JWST/MIRI+Coronagraphy+Scheduling+Table" + "\n"
+    text += f"The schedule of MIRI coronagraphic observations has been updated and is available here: https://innerspace.stsci.edu/display/JWST/MIRI+Coronagraphy+Scheduling+Table." + "\n"
 
     time_window = 60
     text += f"The following observations are planned to execute within the next {time_window} days:" + "\n\n"
@@ -272,7 +272,7 @@ if __name__ == "__main__":
         prog_ids = prog_ids.split(" ")
     #     ofile = sys.argv[1]
     ofile = "miri_coron_schedule.html"
-    print(f"Generating {ofile} from the following {len(prog_ids)} programs:")
+    print(f"Generating `{ofile}` from the following {len(prog_ids)} programs:")
     print_columns(prog_ids)
     print("")
 
@@ -283,11 +283,14 @@ if __name__ == "__main__":
         html_path = Path("/Users/jaguilar/Desktop/test.html")
     html.write_html(str(html_path), programs)
     print(
-        f"""Upload it to the "MIRI Coronagraphy Dump" folder:
-    \t https://stsci.app.box.com/folder/196944163759
-    and copy-paste the HTML from {ofile} into the HTML box on the Scheduling page:
-    \t https://innerspace.stsci.edu/display/JWST/MIRI+Coronagraphy+Scheduling+Table
-    """
+        inspect.cleandoc(
+            f"""\
+            {Path(ofile).absolute()} written. Upload it to the "MIRI Coronagraphy Dump" folder:
+            \t https://stsci.app.box.com/folder/196944163759
+            and copy-paste the HTML from {str( ofile )} into the HTML box on the Scheduling page:
+            \t https://innerspace.stsci.edu/display/JWST/MIRI+Coronagraphy+Scheduling+Table
+            """
+        )
     )
 
     # print the programs that are happening in the next month
