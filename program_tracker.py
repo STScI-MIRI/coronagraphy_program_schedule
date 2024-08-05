@@ -220,7 +220,8 @@ def get_next_month(program_table, time_window=60):
 
 
 def generate_email_template(
-        programs : pd.DataFrame
+        programs : pd.DataFrame,
+        time_window : int = 60 # days
 ) -> str :
     """
     Generate the email template and write it to disk
@@ -229,6 +230,8 @@ def generate_email_template(
     ----------
     programs : pd.DataFrame
       dataframe with the program information
+    time_window : int = 60
+      the window in days for including observations in this update
 
     Output
     ------
@@ -240,9 +243,9 @@ def generate_email_template(
     text += f"Subject line: MIRI Coronagraphy - Upcoming Programs {today}" + "\n"
     text += "\n\n"
     text += "Dear MIRI Coronagraphy Working Group,\n\n"
+    text += "Here are topics for our tag-up: [FILL IN]" + "\n"
     text += f"The schedule of MIRI coronagraphic observations has been updated and is available here: https://innerspace.stsci.edu/display/JWST/MIRI+Coronagraphy+Scheduling+Table." + "\n"
 
-    time_window = 60
     text += f"The following observations are planned to execute within the next {time_window} days:" + "\n\n"
     
     next_programs = get_next_month(programs, time_window)
@@ -285,7 +288,7 @@ if __name__ == "__main__":
     print(
         inspect.cleandoc(
             f"""\
-            {Path(ofile).absolute()} written. Upload it to the "MIRI Coronagraphy Dump" folder:
+            {Path(ofile).absolute()} written. Upload it to the "MIRI Coronagraphy WG Files" folder:
             \t https://stsci.app.box.com/folder/196944163759
             and copy-paste the HTML from {str( ofile )} into the HTML box on the Scheduling page:
             \t https://innerspace.stsci.edu/display/JWST/MIRI+Coronagraphy+Scheduling+Table
@@ -295,7 +298,7 @@ if __name__ == "__main__":
 
     # print the programs that are happening in the next month
     print("Copy and paste this text (email_text.txt) into your program status email:\n")
-    email_text = generate_email_template(programs)
+    email_text = generate_email_template(programs, time_window=60)
     print(email_text)
     with open("email_text.txt", "w") as f:
         f.write(email_text)

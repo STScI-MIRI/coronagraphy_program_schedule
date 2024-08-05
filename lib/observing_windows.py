@@ -21,7 +21,9 @@ months = {'Jan':'01','Feb':'02','Mar':'03',
           'Jul':'07','Aug':'08','Sep':'09',
           'Oct':'10','Nov':'11','Dec':'12'}
 
-def getxml(url="https://yoursite/your.xml"):
+def getxml(url, log):
+    # global log
+
     http = urllib3.PoolManager()
 
     response = http.request('GET', url)
@@ -33,9 +35,9 @@ def getxml(url="https://yoursite/your.xml"):
         
     return data
 
-def visit_xml(proposal_id=1234):
+def visit_xml(proposal_id, log):
     url = f"https://www.stsci.edu/cgi-bin/get-visit-status?id={proposal_id}&markupFormat=xml&observatory=JWST"
-    data = getxml(url=url)
+    data = getxml(url=url, log=log)
     if 'visitStatusReport' in data:
         data = data['visitStatusReport']
         
@@ -48,7 +50,7 @@ def prop_html(proposal_id=1234):
     soup = BeautifulSoup(html_text, 'html.parser')
     return soup
 
-def program_info(proposal_id=1234):
+def program_info(proposal_id, log):
     
     soup = prop_html(proposal_id=proposal_id)
     meta = {'proposal_id':proposal_id}
@@ -72,7 +74,7 @@ def program_info(proposal_id=1234):
         else:
             meta[k[1]] = '_'
         
-    visits = visit_xml(proposal_id)
+    visits = visit_xml(proposal_id, log)
     #for k in ['visit']: #visits:
     #    meta[k] = visits[k]
     if isinstance(visits['visit'], list):
@@ -138,7 +140,7 @@ def get_dates(pid, obs_id, log_name):
     log = log_name
     
     try:
-        obs_meta = program_info(pid)
+        obs_meta = program_info(pid, log)
     except:
         logging(log, 'Could not get program info for {}.'.format(pid))
         start, end = pd.NA, pd.NA

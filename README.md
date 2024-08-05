@@ -16,3 +16,11 @@ Requirements:
 - urllib3
 - beautifulsoup4
 - xmltodict
+
+
+### PPSDB version
+
+1. Open a terminal
+2. Activate python env with `conda activate coron_program_schedule`
+3. Run kinit?
+4. Run `python ppsdb_schedule.py` (or, `%run ppsdb_schedule.py` from within ipython)

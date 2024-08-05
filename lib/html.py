@@ -63,6 +63,8 @@ def generate_table_rows(database):
     return row_data
 
 
+
+
 def write_html(outfile, database):
     """write the visit info to html"""
     with open(outfile, "w") as ff:
@@ -87,3 +89,41 @@ def write_html(outfile, database):
             ff.write(table_end_template())
 
         ff.write(body_end_template(list_of_tables))
+
+
+def write_html_pps(outfile, database):
+    """Write the PPS visit into to html"""
+    visit_status_kws = [
+        'SCHEDULED',
+        'FLIGHT_READY',
+        'IMPLEMENTATION',
+        'PI',
+        'COMPLETED',
+        'SKIPPED',
+        'FAILED',
+        'WITHDRAWN',
+    ]
+    with open(outfile, "w") as ff:
+        ff.write(head_template())
+
+        ff.write(body_start_template())
+
+        # tables_gb = database.groupby("status")
+        # table_keys = sorted(tables_gb.groups.keys())
+        # print("Generating the following tables:")
+        # print("\t", ", ".join(table_keys))
+        # make a separate table for each kind of visit status
+        # list_of_tables = []
+        # for key, group in tables_gb:
+        for key in visit_status_kws:
+            group = database.query(f"visit_status == '{key}'")
+            group_dropna = group.dropna(how="all", axis=1)
+            ff.write(f"<br><br>Status: {key.upper()}<br>\n")
+            table_name = f"table_{key}"
+            ff.write(table_start_template(group_dropna.columns, table_name))
+            # list_of_tables.append(table_name)
+            row_data = generate_table_rows(group_dropna)
+            ff.write(row_data)
+            ff.write(table_end_template())
+
+        ff.write(body_end_template(visit_status_kws))
