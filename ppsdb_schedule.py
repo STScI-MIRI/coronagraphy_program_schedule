@@ -143,8 +143,8 @@ def print_table(
                     + f"Start: {row['isodate']}" + " | "\
                     + f"SI: {row['SI']}"
                 )
-            print("")
-        print("\n")
+            # print("")
+        # print("\n")
 
 
 def generate_email_template(
@@ -165,15 +165,15 @@ def generate_email_template(
 
     """
     today = datetime.date.today().strftime("%Y-%m-%d")
-    print("\n")
+    # print("\n")
     print(f"Subject line: MIRI Coronagraphy - Upcoming Programs {today}" + "\n")
     print("Dear MIRI Coronagraphy Working Group,\n")
     print(f"Here are topics for our tag-up tomorrow: [FILL IN]" + "\n")
-    print(f"The following observations are planned to execute within the next {time_window} days:" + "\n")
+    print(f"The following observations are planned to execute within the next {time_window} days:")
     
     print_table(programs)
 
-    print("\n" + "Regards," + "\n\n" + "The MIRI Coronagraphy Working Group")
+    print("\n\n" + "Regards," + "\n\n" + "The MIRI Coronagraphy Working Group")
 
 
 if __name__ == '__main__':
@@ -182,17 +182,19 @@ if __name__ == '__main__':
     all_visits = get_visits_pps()
     window = 60
     observation_statuses = get_future_programs(all_visits, window)
-    print_table(observation_statuses)
+    # print_table(observation_statuses)
     ofile = "miri_coron_schedule.html"
     try:
         html_path = Path(ofile)
     except:
         html_path = Path("/Users/jaguilar/Desktop/test.html")
     html.write_html_pps(str(html_path), all_visits)
+    print("\n")
     print(
         inspect.cleandoc(
             f"""\
-            {Path(ofile).absolute()} written. Upload it to the "MIRI Coronagraphy WG Files" folder:
+            {Path(ofile).absolute()} written.
+            Upload it to the "MIRI Coronagraphy WG Files" folder:
             \t https://stsci.app.box.com/folder/196944163759
             and copy-paste the HTML from {str( ofile )} into the HTML box on the Scheduling page:
             \t https://innerspace.stsci.edu/display/JWST/MIRI+Coronagraphy+Scheduling+Table
@@ -201,4 +203,6 @@ if __name__ == '__main__':
     )
 
     print("Copy and paste this text (email_text.txt) into your program status email:\n")
+    print("------ BEGIN EMAIL ------")
     generate_email_template(observation_statuses, window)
+    print("------- END EMAIL -------\n")
