@@ -149,7 +149,8 @@ def print_table(
 
 def generate_email_template(
         programs : pd.DataFrame,
-        time_window : int = 60
+        time_window : int = 60,
+        url : str = ''
 ) -> None:
     """
     Generate the email template and write it to disk
@@ -168,16 +169,23 @@ def generate_email_template(
     # print("\n")
     print(f"Subject line: MIRI Coronagraphy - Upcoming Programs {today}" + "\n")
     print("Dear MIRI Coronagraphy Working Group,\n")
-    print(f"Here are topics for our tag-up tomorrow: [FILL IN]" + "\n")
+    print(f"Here are topics for our tag-up: [FILL IN]" + "\n")
     print(f"The following observations are planned to execute within the next {time_window} days:")
     
     print_table(programs)
+
+    print("\n\n")
+    print(f"The full schedule of observations is available at the following url: ")
+    print(f"{url}")
 
     print("\n\n" + "Regards," + "\n\n" + "The MIRI Coronagraphy Working Group")
 
 
 if __name__ == '__main__':
+    box_url = "https://stsci.app.box.com/folder/196944163759"
+    innerspace_url = "https://innerspace.stsci.edu/display/JWST/MIRI+Coronagraphy+Scheduling+Table"
     # get full history of observations
+
     # Get target_id and target_name for background target.
     all_visits = get_visits_pps()
     window = 60
@@ -195,14 +203,14 @@ if __name__ == '__main__':
             f"""\
             {Path(ofile).absolute()} written.
             Upload it to the "MIRI Coronagraphy WG Files" folder:
-            \t https://stsci.app.box.com/folder/196944163759
+            \t {box_url}
             and copy-paste the HTML from {str( ofile )} into the HTML box on the Scheduling page:
-            \t https://innerspace.stsci.edu/display/JWST/MIRI+Coronagraphy+Scheduling+Table
+            \t {innerspace_url}
             """
         )
     )
 
     print("Copy and paste this text (email_text.txt) into your program status email:\n")
     print("------ BEGIN EMAIL ------")
-    generate_email_template(observation_statuses, window)
+    generate_email_template(observation_statuses, window, innerspace_url)
     print("------- END EMAIL -------\n")

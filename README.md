@@ -22,5 +22,9 @@ Requirements:
 
 1. Open a terminal
 2. Activate python env with `conda activate coron_program_schedule`
-3. Run kinit?
+3. Run kinit? I think you have to explicitly add a kerberos ticket to this terminal instance
 4. Run `python ppsdb_schedule.py` (or, `%run ppsdb_schedule.py` from within ipython)
+
+## Misc info
+
+Take a look at the table https://www-int.stsci.edu/dsd/cns/database/r2d2/PPSDB103/plan_window_status.html . It has information about the long-range plan.
