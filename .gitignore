@@ -1,3 +1,6 @@
 __pycache__/
 miri_coron_schedule.html
 token
+/.ipynb_checkpoints/
+/lib/.ipynb_checkpoints/
+/.ppsdb_schedule.py.swp
