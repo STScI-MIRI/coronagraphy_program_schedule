@@ -1,5 +1,6 @@
 #!/usr/bin/env python
  
+import sys
 from pathlib import Path
 import datetime
 import inspect
@@ -11,13 +12,6 @@ from ppsdb.ppsdb import Connect
 from lib import html
 
 pps = Connect()
- 
-reviewer_ids = {
-    20974 : "Bryony Nickson",
-    20978 : "Jonathan Aguilar",
-    936 : "Dean Hines",
-    1947 : "Alberto Noriega Crespo"
-}
 
 # Visit statuses, in the order you want them displayed
 visit_status_kws = [
@@ -32,34 +26,38 @@ visit_status_kws = [
 ]
 
 
+# lines beginning with '#' will be stripped from this query before it is
+# submitted to PPS, so you can use them for comments
 query = """
   SELECT
     program.category,
-    bpv.program,
-    bpv.observation,
-    bpv.visit_id,
-    bpv.scheduled_start_time,
+    bvv.program,
+    program.title,
+    bvv.observation,
+    bvv.scheduled_start_time,
     vt.visit_status,
-    science_reviewer.person_id,
-    science_reviewer.instrument
-  FROM baseline_prime_visits as bpv
-  # use the visit table to select for the miri coron template
-  JOIN visit as v
-    ON v.visit_id = bpv.visit_id
+    ev.instrument,
+    instruments.prime_si,
+    instruments.parallel_si
+  # This table combines baseline_prime_visits and baseline_parallel_visits tables
+  FROM baseline_visits_view as bvv
   # get the visit status from the visit_track table
   JOIN visit_track as vt
-    ON vt.program = bpv.program
-    AND vt.observation = bpv.observation
-    AND vt.visit = bpv.visit
-  # left join - handles the case where there is no science reviewer, like a cal program
-  LEFT JOIN science_reviewer
-    ON science_reviewer.program = bpv.program
-  JOIN program
-    ON program.program = bpv.program
+    ON vt.program = bvv.program
+    AND vt.observation = bvv.observation AND vt.visit = bvv.visit
+  LEFT JOIN program
+    ON program.program = bvv.program
+  # add the instrument table using the visit_id to match
+  JOIN instruments
+    ON instruments.visit_id = bvv.visit_id
+  # the exposure_view has the instrument information
+  JOIN exposure_view as ev
+    ON ev.visit_id = bvv.visit_id
   WHERE
-    bpv.program > 1000
-    AND v.template = 'MIRI Coronagraphic Imaging'
-    AND (science_reviewer.instrument IS NULL or science_reviewer.instrument = 'MIRI')
+    # filter for programs from after commissioning
+    bvv.program > 1000
+    # filter for MIRI
+    AND ev.instrument = 'MIRI'
 """
 
 def get_visits_pps(query=query) -> pd.DataFrame :
@@ -78,29 +76,28 @@ def get_visits_pps(query=query) -> pd.DataFrame :
     """
     table = pps.execute(query)
     table = table.to_pandas()
-    # print("All programs")
-    # print(table[['program','observation','scheduled_start_time']].sort_values(by='scheduled_start_time'))
     table['isodate'] = table['scheduled_start_time'].apply(lambda t: datetime.date.fromisoformat(t.split(" ")[0]))
-    table['SI'] = table['person_id'].apply(lambda pid: reviewer_ids.get(pid, 'None'))
-    table.drop(columns=['person_id'], inplace=True)
+    table.drop(columns='scheduled_start_time', inplace=True)
     return table
 
 def get_future_programs(
         table : pd.DataFrame,
-        window : int = 60
+        window : int | None = 60
 ) -> pd.DataFrame:
     """
     Return programs planned to execute in the future, within a certain window of days
     """
+    table = table.sort_values(by='isodate')
+
     today = datetime.date.today()
-    td_window = datetime.timedelta(days=window)
-    end_window = today + td_window
     scheduled_programs = table[table['isodate'] >= today]
-    scheduled_in_window = scheduled_programs[scheduled_programs['isodate'] <= end_window]
-    # replace person_id with name
-    # scheduled_in_window['SI'] = scheduled_in_window['person_id'].apply(lambda pid: reviewer_ids.get(pid, 'None'))
-    # scheduled_in_window.drop(columns=['person_id'], inplace=True)
-    return scheduled_in_window
+    if window is None:
+        return scheduled_programs
+    else:
+        td_window = datetime.timedelta(days=window)
+        end_window = today + td_window
+        scheduled_in_window = scheduled_programs[scheduled_programs['isodate'] <= end_window]
+        return scheduled_in_window
 
 def print_table(
         df : pd.DataFrame,
@@ -136,81 +133,32 @@ def print_table(
         for prog in gb_program.groups:
             group = gb_program.get_group(prog)
             for i, row in group.iterrows():
-                print(
-                    f"{row['category']:3s}" + " | "\
-                    + f"Prog: {prog:4d}" + " | "\
-                    + f"Obs: {row['observation']:3d}" + " | "\
-                    + f"Start: {row['isodate']}" + " | "\
-                    + f"SI: {row['SI']}"
-                )
+                # print(
+                #     f"{row['category']:3s}" + " | "\
+                #     + f"Prog: {prog:4d}" + " | "\
+                #     + f"Obs: {row['observation']:3d}" + " | "\
+                #     + f"Start: {row['isodate']}" + " | "\
+                #     + f"SI: {row['SI']}"
+                # )
+                print(" | ".join(str(v) for v in row.values))
             # print("")
         # print("\n")
 
 
-def generate_email_template(
-        programs : pd.DataFrame,
-        time_window : int = 60,
-        url : str = ''
-) -> None:
-    """
-    Generate the email template and write it to disk
-
-    Parameters
-    ----------
-    programs : pd.DataFrame
-      dataframe with the program information
-
-    Output
-    ------
-    writes email template to "email_template.txt"
-
-    """
-    today = datetime.date.today().strftime("%Y-%m-%d")
-    # print("\n")
-    print(f"Subject line: MIRI Coronagraphy - Upcoming Programs {today}" + "\n")
-    print("Dear MIRI Coronagraphy Working Group,\n")
-    print(f"Here are topics for our tag-up: [FILL IN]" + "\n")
-    print(f"The following observations are planned to execute within the next {time_window} days:")
-    
-    print_table(programs)
-
-    print("\n\n")
-    print(f"The full schedule of observations is available at the following url: ")
-    print(f"{url}")
-
-    print("\n\n" + "Regards," + "\n\n" + "The MIRI Coronagraphy Working Group")
-
-
 if __name__ == '__main__':
+    fname = sys.argv[1]
     box_url = "https://stsci.app.box.com/folder/196944163759"
     innerspace_url = "https://innerspace.stsci.edu/display/JWST/MIRI+Coronagraphy+Scheduling+Table"
     # get full history of observations
 
     # Get target_id and target_name for background target.
     all_visits = get_visits_pps()
-    window = 60
-    observation_statuses = get_future_programs(all_visits, window)
-    # print_table(observation_statuses)
-    ofile = "miri_coron_schedule.html"
-    try:
-        html_path = Path(ofile)
-    except:
-        html_path = Path("/Users/jaguilar/Desktop/test.html")
-    html.write_html_pps(str(html_path), all_visits)
-    print("\n")
-    print(
-        inspect.cleandoc(
-            f"""\
-            {Path(ofile).absolute()} written.
-            Upload it to the "MIRI Coronagraphy WG Files" folder:
-            \t {box_url}
-            and copy-paste the HTML from {str( ofile )} into the HTML box on the Scheduling page:
-            \t {innerspace_url}
-            """
-        )
-    )
+    all_observation_statuses = get_future_programs(all_visits, None)
+    all_observation_statuses.sort_values(by='isodate', inplace=True)
 
-    print("Copy and paste this text (email_text.txt) into your program status email:\n")
-    print("------ BEGIN EMAIL ------")
-    generate_email_template(observation_statuses, window, innerspace_url)
-    print("------- END EMAIL -------\n")
+    # observations in the next 60 days
+    window = 60
+    window_observation_statuses = get_future_programs(all_visits, window).drop_duplicates()
+    # fname = f"miri_upcoming_observations-{today.year}{today.month:02d}{today.day:02d}.html"
+    with open(fname, "w") as f:
+        f.write(window_observation_statuses.to_html(index=False))

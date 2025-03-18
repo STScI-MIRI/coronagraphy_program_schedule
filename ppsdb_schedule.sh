@@ -1,12 +1,8 @@
 #!/bin/bash
 
-# this doesn't quite work because you have to run kinit *after* setting the environment
-# Run ppsdb_schedule.py from bash
-# run_schedule() {
-#     kinit
-#     python ppsdb_schedule.py
-# }
-# # alias run_schedule="kinit; python ppsdb_schedule"
-# conda run -n coron_program_schedule run_schedule
-kinit
-python ppsdb_schedule.py
+#today=`date '+%Y%m%d'`
+# fname="miri_upcoming_observations-${today}.html"
+fname="miri_upcoming_observations.html"
+conda run -n coron_program_schedule python ppsdb_schedule.py $fname
+open $fname
+

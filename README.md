@@ -27,8 +27,9 @@ Requirements:
 2. Activate python env with `conda activate coron_program_schedule`
 3. Run kinit? I think you have to explicitly add a kerberos ticket to this
    terminal instance
-4. Run `python ppsdb_schedule.py` (or, `%run ppsdb_schedule.py` from within
+4. Run `./ppsdb_schedule.sh` or `python ppsdb_schedule.py` (or, `%run ppsdb_schedule.py` from within
    ipython)
+
 
 You can copy-paste this code block:
 ```
