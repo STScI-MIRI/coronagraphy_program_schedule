@@ -28,17 +28,20 @@ Requirements:
 3. Run kinit? I think you have to explicitly add a kerberos ticket to this
    terminal instance
 4. Run `./ppsdb_schedule.sh` or `python ppsdb_schedule.py` (or, `%run ppsdb_schedule.py` from within
-   ipython)
+   ipython
 
 
 You can copy-paste this code block:
 ```
 conda activate coron_program_schedule
 kinit
-python ppsdb_schedule.py
+./ppsdb_schedule.sh
 ```
 
 You will be asked to enter a password after running `kinit`.
+
+
+After the script is finished, it will generate the file `./miri_coron_schedule.html`. Copy the HTML into the MIRI Innerspace page here: `https://innerspace.stsci.edu/display/JWST/Upcoming+MIRI+observations` and edit the `Updated:` date.
 
 ### TODO
 I would like to be able to run it from a script as `./ppsdb_schedule.sh`.
